@@ -22,6 +22,7 @@ export const INITIAL_STATE: Types.StoreState = {
   selected: null,
   copied: PointMap.from([]),
   lastCommit: null,
+  autoFilling: false,
 };
 
 export default function reducer(
@@ -276,18 +277,84 @@ export default function reducer(
       const { changes } = action.payload;
       return { ...state, ...commit(changes) };
     }
+    case Actions.AUTO_FILL_START: {
+      return { ...state, autoFilling: true };
+    }
+    case Actions.AUTO_FILL_END: {
+      const { active, selected } = state;
+
+      const nextState = { ...state, autoFilling: false };
+
+      if (!active) {
+        return nextState;
+      }
+      if (!PointRange.is(selected)) {
+        return nextState;
+      }
+      const activeCell = Matrix.get(active, nextState.model.data);
+      if (!activeCell) {
+        return nextState;
+      }
+      const nextPoint = getNextPoint(active, selected);
+      if (!nextPoint) {
+        return nextState;
+      }
+      const nextCell = Matrix.get(nextPoint, nextState.model.data);
+      if (!nextCell) {
+        return nextState;
+      }
+      if (Number(activeCell.value) + 1 === Number(nextCell.value)) {
+        let nextData = nextState.model.data;
+        let value = Number(activeCell.value);
+        for (const point of PointRange.iterate(selected)) {
+          nextData = Matrix.set(point, { value }, nextData);
+          value++;
+        }
+        return { ...nextState, model: new Model(nextData) };
+      }
+      if (Number(activeCell.value) - 1 === Number(nextCell.value)) {
+        let nextData = nextState.model.data;
+        let value = Number(activeCell.value);
+        for (const point of PointRange.iterate(selected)) {
+          nextData = Matrix.set(point, { value }, nextData);
+          value--;
+        }
+        return { ...nextState, model: new Model(nextData) };
+      }
+
+      return nextState;
+    }
   }
 }
 
-// const reducer = createReducer(INITIAL_STATE, (builder) => {
-//   builder.addMatcher(
-//     (action) =>
-//       action.type === Actions.copy.type || action.type === Actions.cut.type,
-//     (state, action) => {
-
-//     }
-//   );
-// });
+/** Get the next point after active in range */
+export function getNextPoint(
+  active: Point.Point,
+  range: PointRange.PointRange
+): Point.Point | undefined {
+  const { start, end } = range;
+  const isHorizontal = start.row === end.row;
+  const isVertical = start.column === end.column;
+  if ((isHorizontal && isVertical) || (!isHorizontal && !isVertical)) {
+    return undefined;
+  }
+  if (isHorizontal) {
+    const isForward = active.column < end.column;
+    const nextColumn = isForward ? active.column + 1 : active.column - 1;
+    const nextPoint = { row: active.row, column: nextColumn };
+    if (PointRange.has(range, nextPoint)) {
+      return nextPoint;
+    }
+  }
+  if (isVertical) {
+    const isForward = active.row < end.row;
+    const nextRow = isForward ? active.row + 1 : active.row - 1;
+    const nextPoint = { row: nextRow, column: active.column };
+    if (PointRange.has(range, nextPoint)) {
+      return nextPoint;
+    }
+  }
+}
 
 // // Shared reducers
 
