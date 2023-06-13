@@ -3,6 +3,7 @@ import * as Types from "./types";
 import * as Actions from "./actions";
 import reducer, {
   INITIAL_STATE,
+  autoFill,
   getNextPoint,
   hasKeyDownHandler,
   isActiveReadOnly,
@@ -252,6 +253,43 @@ describe("isActiveReadOnly", () => {
   ] as const;
   test.each(cases)("%s", (name, state, expected) => {
     expect(isActiveReadOnly(state)).toBe(expected);
+  });
+});
+
+describe("autoFill", () => {
+  const cases: Array<
+    [
+      name: string,
+      data: Matrix.Matrix<Types.CellBase>,
+      selected: PointRange.PointRange,
+      active: Point.Point,
+      expected: Matrix.Matrix<Types.CellBase>
+    ]
+  > = [
+    [
+      "increasing series",
+      [[{ value: 1 }], [{ value: 2 }]],
+      PointRange.create(Point.ORIGIN, { row: 2, column: 0 }),
+      Point.ORIGIN,
+      [[{ value: 1 }], [{ value: 2 }], [{ value: 3 }]],
+    ],
+    [
+      "decreasing series",
+      [[{ value: 2 }], [{ value: 1 }]],
+      PointRange.create(Point.ORIGIN, { row: 2, column: 0 }),
+      Point.ORIGIN,
+      [[{ value: 2 }], [{ value: 1 }], [{ value: 0 }]],
+    ],
+    [
+      "same value",
+      [[{ value: 1 }]],
+      PointRange.create(Point.ORIGIN, { row: 2, column: 0 }),
+      Point.ORIGIN,
+      [[{ value: 1 }], [{ value: 1 }], [{ value: 1 }]],
+    ],
+  ];
+  test.each(cases)("%s", (name, data, selected, active, expected) => {
+    expect(autoFill(data, selected, active)).toEqual(expected);
   });
 });
 

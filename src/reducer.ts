@@ -289,53 +289,10 @@ export default function reducer(
         return nextState;
       }
 
-      const activeCell = Matrix.get(active, nextState.model.data);
-      if (!activeCell) {
-        return nextState;
-      }
-
-      const nextPoint = getNextPoint(active, selected);
-      if (!nextPoint) {
-        return nextState;
-      }
-      const nextCell = Matrix.get(nextPoint, nextState.model.data);
-
-      const nextModel = autoFill(
-        nextState.model,
-        selected,
-        activeCell,
-        nextCell
-      );
-      return { ...state, model: nextModel };
-    }
-  }
-}
-
-/** Get the next point after active in range */
-export function getNextPoint(
-  active: Point.Point,
-  range: PointRange.PointRange
-): Point.Point | undefined {
-  const { start, end } = range;
-  const isHorizontal = start.row === end.row;
-  const isVertical = start.column === end.column;
-  if ((isHorizontal && isVertical) || (!isHorizontal && !isVertical)) {
-    return undefined;
-  }
-  if (isHorizontal) {
-    const isForward = active.column < end.column;
-    const nextColumn = isForward ? active.column + 1 : active.column - 1;
-    const nextPoint = { row: active.row, column: nextColumn };
-    if (PointRange.has(range, nextPoint)) {
-      return nextPoint;
-    }
-  }
-  if (isVertical) {
-    const isForward = active.row < end.row;
-    const nextRow = isForward ? active.row + 1 : active.row - 1;
-    const nextPoint = { row: nextRow, column: active.column };
-    if (PointRange.has(range, nextPoint)) {
-      return nextPoint;
+      const nextData = autoFill(nextState.model.data, selected, active);
+      return nextData === nextState.model.data
+        ? nextState
+        : { ...nextState, model: new Model(nextData) };
     }
   }
 }
@@ -543,28 +500,72 @@ export function getActive(state: Types.StoreState): Types.CellBase | null {
   return activeCell || null;
 }
 
+/** Autofill the given selected range in given data according to active */
 export function autoFill<T extends Types.CellBase>(
-  model: Model<T>,
+  data: Matrix.Matrix<T>,
   selected: PointRange.PointRange,
-  activeCell: T,
-  nextCell: T | undefined
-): Model<T> {
-  let nextData = model.data;
+  active: Point.Point
+): Matrix.Matrix<T> {
+  const activeCell = Matrix.get(active, data);
+  if (!activeCell) {
+    return data;
+  }
+  const nextPoint = getNextPoint(active, selected);
+  if (!nextPoint) {
+    return data;
+  }
+  const nextCell = Matrix.get(nextPoint, data);
+
+  let nextData = data;
   let value = Number(activeCell.value);
   for (const point of PointRange.iterate(selected)) {
     const currentCell = Matrix.get(point, nextData);
     let updatedCell;
+    // Increasing series
     if (Number(activeCell.value) + 1 === Number(nextCell?.value)) {
       updatedCell = { ...currentCell, value } as T;
 
       value++;
-    } else if (Number(activeCell.value) - 1 === Number(nextCell?.value)) {
+    }
+    // Decreasing series
+    else if (Number(activeCell.value) - 1 === Number(nextCell?.value)) {
       updatedCell = { ...currentCell, value } as T;
       value--;
-    } else {
+    }
+    // Same value
+    else {
       updatedCell = { ...currentCell, value } as T;
     }
     nextData = Matrix.set(point, updatedCell, nextData);
   }
-  return new Model(nextData);
+  return nextData;
+}
+
+/** Get the next point after active in range */
+export function getNextPoint(
+  active: Point.Point,
+  range: PointRange.PointRange
+): Point.Point | undefined {
+  const { start, end } = range;
+  const isHorizontal = start.row === end.row;
+  const isVertical = start.column === end.column;
+  if ((isHorizontal && isVertical) || (!isHorizontal && !isVertical)) {
+    return undefined;
+  }
+  if (isHorizontal) {
+    const isForward = active.column < end.column;
+    const nextColumn = isForward ? active.column + 1 : active.column - 1;
+    const nextPoint = { row: active.row, column: nextColumn };
+    if (PointRange.has(range, nextPoint)) {
+      return nextPoint;
+    }
+  }
+  if (isVertical) {
+    const isForward = active.row < end.row;
+    const nextRow = isForward ? active.row + 1 : active.row - 1;
+    const nextPoint = { row: nextRow, column: active.column };
+    if (PointRange.has(range, nextPoint)) {
+      return nextPoint;
+    }
+  }
 }
