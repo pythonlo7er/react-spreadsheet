@@ -285,44 +285,28 @@ export default function reducer(
 
       const nextState = { ...state, autoFilling: false };
 
-      if (!active) {
+      if (!active || !PointRange.is(selected)) {
         return nextState;
       }
-      if (!PointRange.is(selected)) {
-        return nextState;
-      }
+
       const activeCell = Matrix.get(active, nextState.model.data);
       if (!activeCell) {
         return nextState;
       }
+
       const nextPoint = getNextPoint(active, selected);
       if (!nextPoint) {
         return nextState;
       }
       const nextCell = Matrix.get(nextPoint, nextState.model.data);
-      if (!nextCell) {
-        return nextState;
-      }
-      if (Number(activeCell.value) + 1 === Number(nextCell.value)) {
-        let nextData = nextState.model.data;
-        let value = Number(activeCell.value);
-        for (const point of PointRange.iterate(selected)) {
-          nextData = Matrix.set(point, { value }, nextData);
-          value++;
-        }
-        return { ...nextState, model: new Model(nextData) };
-      }
-      if (Number(activeCell.value) - 1 === Number(nextCell.value)) {
-        let nextData = nextState.model.data;
-        let value = Number(activeCell.value);
-        for (const point of PointRange.iterate(selected)) {
-          nextData = Matrix.set(point, { value }, nextData);
-          value--;
-        }
-        return { ...nextState, model: new Model(nextData) };
-      }
 
-      return nextState;
+      const nextModel = autoFill(
+        nextState.model,
+        selected,
+        activeCell,
+        nextCell
+      );
+      return { ...state, model: nextModel };
     }
   }
 }
@@ -557,4 +541,30 @@ export function isActiveReadOnly(state: Types.StoreState): boolean {
 export function getActive(state: Types.StoreState): Types.CellBase | null {
   const activeCell = state.active && Matrix.get(state.active, state.model.data);
   return activeCell || null;
+}
+
+export function autoFill<T extends Types.CellBase>(
+  model: Model<T>,
+  selected: PointRange.PointRange,
+  activeCell: T,
+  nextCell: T | undefined
+): Model<T> {
+  let nextData = model.data;
+  let value = Number(activeCell.value);
+  for (const point of PointRange.iterate(selected)) {
+    const currentCell = Matrix.get(point, nextData);
+    let updatedCell;
+    if (Number(activeCell.value) + 1 === Number(nextCell?.value)) {
+      updatedCell = { ...currentCell, value } as T;
+
+      value++;
+    } else if (Number(activeCell.value) - 1 === Number(nextCell?.value)) {
+      updatedCell = { ...currentCell, value } as T;
+      value--;
+    } else {
+      updatedCell = { ...currentCell, value } as T;
+    }
+    nextData = Matrix.set(point, updatedCell, nextData);
+  }
+  return new Model(nextData);
 }
