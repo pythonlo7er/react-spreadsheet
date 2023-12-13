@@ -64,32 +64,38 @@ const App = () => {
 The Spreadsheet component accepts `onChange` prop that is called every time one of the Spreadsheet's cell is changed by the user. You can use it to save the modified data and to react to changes (e.g. validating the modified data, further modify it, persist it).
 
 ```javascript
-import Spreadsheet from "react-spreadsheet";
 
-const App = () => {
-  const [data, setData] = useState([
-    [{ value: "Vanilla" }, { value: "Chocolate" }, { value: "" }],
-    [{ value: "Strawberry" }, { value: "Cookies" }, { value: "" }],
-  ]);
-  return <Spreadsheet data={data}
-  onChange={
-    const t = d.map(row => [...row]);
-    for (let i = 0; i < 3; i++) {
-      const string = d[i][1]
-      if(string.value === 'Chocolate'){
-        t[i][2] = {value:"🍫"}
-      }
-      else if(string.value === "Cookies"){
-        t[i][2] = {value:"🍪"}
-      }
-      else if(string.value === "Pizza"){
-        t[i][2] = {value:"🍕"}
-      }
-      else {
-        t[i][2] = {value:"❓"}
-      }
+import Spreadsheet from "react-spreadsheet";
+import { useState } from "react";
+
+export default function App2() {
+    const [data, setData] = useState([
+        [{ value: "Vanilla" }, { value: "Chocolate" }, { value: "🍫" }],
+        [{ value: "Strawberry" }, { value: "Cookies" }, { value: "🍪" }],
+    ]);
+
+    const handelOnchange = (e) => {
+        const d = e.map((row) => [...row])
+        for (let i = 0; i < 2; i++) {
+            const string = d[i][1]
+            console.log(string);
+            if (string.value === 'Chocolate') {
+                d[i][2] = { value: "🍫" }
+            }
+            else if (string.value === "Cookies") {
+                d[i][2] = { value: "🍪" }
+            }
+            else if (string.value === "Pizza") {
+                d[i][2] = { value: "🍕" }
+            }
+            else {
+                d[i][2] = { value: "❓" }
+            }
+        }
+        setData(d)
+
     }
-    setData(t)
-  } />;
+    return <Spreadsheet data={data} onChange={handelOnchange} />;
+
 };
 ```
